@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: secdevagent-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: secdevagent
+      POSTGRES_PASSWORD: secdevagent_local_dev
+      POSTGRES_DB: secdevagent
+    ports:
+      - "55432:5432"
+    volumes:
+      - secdevagent_pg_data:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:7
+    container_name: secdevagent-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: secdevagent
+      MONGO_INITDB_ROOT_PASSWORD: secdevagent_local_dev
+    ports:
+      - "27118:27017"
+    volumes:
+      - secdevagent_mongo_data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: secdevagent-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: secdevagent
+      RABBITMQ_DEFAULT_PASS: secdevagent_local_dev
+    ports:
+      - "56720:5672"
+      - "15682:15672"
+    volumes:
+      - secdevagent_rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  secdevagent_pg_data:
+  secdevagent_mongo_data:
+  secdevagent_rabbitmq_data:
