@@ -1,5 +1,8 @@
 # SupportOps Agent — Roadmap
 
+**Repo name: `supportops-agent`** (to be used when initializing/publishing via
+VS Code, per your GitHub setup).
+
 Capstone: an autonomous customer-support ticket resolution agent that touches
 every core Agentic AI component, built on your existing backend stack. See
 [INTENTIONS.md](INTENTIONS.md) and [INSTRUCTIONS.md](INSTRUCTIONS.md) before
@@ -148,12 +151,59 @@ building it, and a pointer for the "just enough theory" read.
 
 ---
 
+### Phase 11 — Scale-Up Deep Dive (deferred until Phases 0–10 are done)
+
+Everything built so far deliberately uses the minimal/personal-scale tool
+for each concept (pgvector instead of a dedicated vector DB, a single
+Ollama instance instead of a GPU fleet, a hand-rolled ingestion script
+instead of a data pipeline). That's the right call for learning the concept
+itself without infra overhead — but it's not what the same concept looks
+like at a company operating at real scale. This phase is a dedicated pass,
+**after** finishing Phases 0–10, revisiting each concept already learned and
+asking "what changes, and why, once scale/cost/compliance/multi-tenancy are
+real constraints?"
+
+Topics to cover per concept already touched:
+
+- **RAG/vector search**: dedicated vector DBs (Qdrant/Milvus/Pinecone) vs.
+  pgvector — when pgvector stops being enough; ANN index tuning (HNSW
+  parameters, IVFFlat); sharding/partitioning at billions-of-vectors scale;
+  hybrid search infra (OpenSearch/Elasticsearch + vector); dedicated
+  re-ranking services; vector quantization for cost; embedding model
+  versioning/migration; multi-tenant index isolation.
+- **LLM serving**: vLLM/TGI with multi-GPU tensor parallelism, continuous
+  batching, autoscaling GPU fleets, model tiering (routing easy queries to a
+  small model, hard ones to a large one), quantization (AWQ/GPTQ) for
+  cheaper serving at volume.
+- **Orchestration**: durable/distributed agent execution and checkpointing
+  for long-running graphs, handling many concurrent tenant sessions,
+  idempotency/retry semantics at scale, LangGraph vs. general workflow
+  engines (Temporal, Airflow) for production durability guarantees.
+- **Event-driven infra**: partitioned queues, consumer autoscaling,
+  dead-letter queues, at-least-once vs. exactly-once delivery semantics,
+  backpressure handling, RabbitMQ vs. Kafka at high throughput.
+- **Evaluation**: continuous eval in CI/CD, human-in-the-loop sampling
+  strategies at volume, drift detection, dataset curation as an ongoing
+  process rather than a one-time hand-labeled set.
+- **Observability**: distributed tracing across many microservices + LLM
+  calls, cost/token monitoring dashboards, alerting on hallucination/error
+  rate rather than manually reading traces.
+- **Guardrails/safety**: centralized policy engines, real-time moderation
+  pipelines, audit logging for compliance (SOC2/GDPR-style requirements).
+- **Fine-tuning**: distributed training infra, continuous fine-tuning data
+  pipelines, evaluation gates before promoting a new fine-tuned version,
+  model registries.
+
+This list will grow as new concepts get introduced in later phases — treat
+it as a standing checklist, not a fixed one.
+
 ## Status
 
 - [x] Phase 0 — local skeleton up, `/health` verified against all three services
 - [x] Phase 1 — Ollama installed + qwen2.5:7b pulled, `llm_client.generate()` verified with a real Pydantic schema
+- [x] Phase 2 — Classifier agent built and tested against 3 sample tickets
 - [ ] Phase 2
-- [ ] Phase 3 (niche decision needed here)
+- [x] Phase 3 — fictional "Cloudnest" corpus ingested into pgvector; retrieval + grounded-answer loop verified, including correct refusal on an out-of-corpus question
 - [ ] Phase 4
 - [ ] Phase 5
 - [ ] Phase 6
@@ -161,3 +211,4 @@ building it, and a pointer for the "just enough theory" read.
 - [ ] Phase 8
 - [ ] Phase 9 (optional, permission-gated)
 - [ ] Phase 10
+- [ ] Phase 11 (deferred — scale-up deep dive, after Phase 0–10 complete)
