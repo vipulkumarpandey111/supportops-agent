@@ -173,4 +173,49 @@ phase plan and current checklist status.
 
 ## Phase 4 — Orchestration with LangGraph
 
+**What was done:**
+- Wrote [LANGGRAPH.md](LANGGRAPH.md) — state schemas, nodes, edges,
+  conditional edges, why loops need explicit exit conditions, and how a
+  retry must change strategy rather than repeat itself — each tied to the
+  actual node in this repo.
+- Wrote [app/orchestration/graph.py](app/orchestration/graph.py): a
+  `TicketState` TypedDict, three nodes (`classify_node`, `retrieve_node`,
+  `generate_node` — thin wrappers around the already-tested Phase 2/3
+  functions, not reimplementations), and a conditional edge
+  (`route_after_generate`) routing to `retry` or `end` based on
+  `answer.sufficient_context`.
+- `retrieve_node` behaves differently on retry: drops the category filter
+  and raises `top_k` from 3 to 5, so a retry actually searches differently
+  instead of repeating an identical failed query.
+- Verified two cases: an in-corpus billing ticket resolved in one pass
+  (`retry_count=0`), and an out-of-corpus question about Salesforce
+  integration retried once (`retry_count=1`), still found nothing, and
+  **stopped and answered honestly** instead of looping forever or
+  hallucinating.
+
+**Why:**
+- Phases 2/3 only ever chained function calls in a straight line manually.
+  Real agent behavior needs state that accumulates across steps, branching
+  based on outcomes, and bounded loops — that's what a graph gives us that
+  a script doesn't.
+- The graph's actual node order (classify → retrieve → generate) deviated
+  slightly from the roadmap's original abstract wording ("retrieve →
+  classify → decide") — building Phase 2/3 revealed retrieval depends on
+  classification's category, so classify has to run first. Worth noting as
+  an example of the roadmap being a plan, not a spec — it adjusts once
+  real constraints are discovered.
+- The retry-loop bound (`MAX_RETRIES`) is the single most important
+  correctness property here: an unconditional loop-back on a genuinely
+  unanswerable question would retry forever, burning inference calls with
+  no path to termination.
+
+**Concepts covered:**
+- See [LANGGRAPH.md](LANGGRAPH.md) in full — state graphs, conditional
+  edges, why bounded loops matter, and where this deliberately stays simple
+  (in-memory-only state, single-threaded execution — flagged for Phase 11).
+
+---
+
+## Phase 5 — Event-driven wiring
+
 *Not started yet.*

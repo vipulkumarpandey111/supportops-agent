@@ -204,7 +204,7 @@ it as a standing checklist, not a fixed one.
 - [x] Phase 2 — Classifier agent built and tested against 3 sample tickets
 - [ ] Phase 2
 - [x] Phase 3 — fictional "Cloudnest" corpus ingested into pgvector; retrieval + grounded-answer loop verified, including correct refusal on an out-of-corpus question
-- [ ] Phase 4
+- [x] Phase 4 — LangGraph state machine built (classify → retrieve → generate, conditional retry loop with broadened search); verified both a one-pass resolution and a correctly-bounded retry-then-honest-give-up
 - [ ] Phase 5
 - [ ] Phase 6
 - [ ] Phase 7
