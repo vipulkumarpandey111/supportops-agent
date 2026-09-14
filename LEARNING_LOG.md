@@ -273,4 +273,60 @@ phase plan and current checklist status.
 
 ## Phase 6 — Multi-agent expansion (Resolver + Responder)
 
+**What was done:**
+- Wrote [app/tools/orders.py](app/tools/orders.py): a mock `orders` table in
+  Postgres (order_id, customer_email, amount, charge_date, status), seeded
+  with 3 fake orders, plus `get_order()`/`initiate_refund()`. The $50
+  auto-approve threshold (`AUTO_APPROVE_REFUND_LIMIT`) is a plain Python
+  constant checked in code — not something the LLM decides.
+- Wrote [app/agents/resolver.py](app/agents/resolver.py): `plan_action()`
+  asks the LLM to extract an order ID and proposed action from free-text
+  ticket content into a structured `ResolverPlan`. `execute_plan()` is
+  separate, deterministic Python that actually calls the DB tools and
+  applies the threshold — the LLM never touches the database directly.
+- Wrote [app/agents/responder.py](app/agents/responder.py): drafts the
+  final customer-facing reply, wording it differently depending on whether
+  the action auto-completed or needs human review.
+- Extended [app/orchestration/graph.py](app/orchestration/graph.py) with
+  `resolve` and `respond` nodes. `route_after_generate` now has a second
+  branch: after a sufficiently-grounded answer, billing tickets continue to
+  `resolve`; everything else goes straight to `END` as before (no action to
+  take on a feature request, say).
+- Extended [app/worker.py](app/worker.py)/[app/storage.py](app/storage.py)
+  with a new terminal status, `pending_human_approval`, alongside
+  `resolved`/`failed`.
+- Verified 3 scenarios directly through the graph, then re-verified the
+  first two through the real HTTP API + worker end-to-end: a $15 refund
+  (auto-resolved, order status flipped to `refunded` in Postgres — checked
+  directly, not just the returned value), a $75 refund (correctly landed on
+  `pending_human_approval`, order status `refund_pending_approval`), and a
+  nonexistent order ID (failed gracefully with an apology, no crash).
+
+**Why:**
+- This is the first phase where the system takes actions with real side
+  effects instead of only producing text — a materially different risk
+  category from everything before it.
+- Splitting "LLM proposes a plan" from "code executes and enforces policy"
+  is the core safety pattern here: a refund threshold is a hard business
+  rule, and hard business rules should never be left to model discretion,
+  however well-prompted. The model's job is judgment (what does this ticket
+  need); the code's job is enforcement (is this actually allowed to
+  proceed automatically).
+- The conditional routing in `route_after_generate` (billing → resolve,
+  everything else → end) is a second kind of branching beyond Phase 4's
+  retry loop — routing on ticket *type*, not just on confidence.
+
+**Concepts covered:**
+- Tool-calling with side effects, vs. Phase 3's read-only retrieval.
+- Agent handoff — Resolver's structured output becomes Responder's input,
+  each agent doing one job rather than one agent doing everything.
+- Human-in-the-loop gating as a first-class terminal state, not an
+  afterthought bolted onto "resolved."
+- Why deterministic business rules belong in code, not prompts — even a
+  very well-written prompt is still probabilistic.
+
+---
+
+## Phase 7 — Evaluation
+
 *Not started yet.*

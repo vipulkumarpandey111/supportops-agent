@@ -30,6 +30,8 @@ def save_new_ticket(ticket_id: str, ticket_text: str) -> None:
             "chunks_used": None,
             "answer": None,
             "retry_count": None,
+            "resolver_result": None,
+            "final_reply": None,
             "error": None,
         }
     )

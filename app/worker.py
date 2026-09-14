@@ -25,15 +25,28 @@ def process_message(channel, method, properties, body):
 
     try:
         result = resolve_ticket(ticket["ticket_text"])
+
+        resolver_result = result.get("resolver_result")
+        responder_reply = result.get("responder_reply")
+
+        if resolver_result is not None and resolver_result.requires_human_approval:
+            status = "pending_human_approval"
+        else:
+            status = "resolved"
+
         update_ticket(
             ticket_id,
-            status="resolved",
+            status=status,
             classification=result["classification"].model_dump(mode="json"),
             chunks_used=[dataclasses.asdict(c) for c in result["chunks"]],
             answer=result["answer"].model_dump(mode="json"),
             retry_count=result["retry_count"],
+            resolver_result=resolver_result.model_dump(mode="json")
+            if resolver_result
+            else None,
+            final_reply=responder_reply.reply_text if responder_reply else None,
         )
-        print(f"[worker] resolved ticket {ticket_id}", flush=True)
+        print(f"[worker] {status}: ticket {ticket_id}", flush=True)
     except Exception as exc:
         update_ticket(ticket_id, status="failed", error=str(exc))
         print(f"[worker] ticket {ticket_id} failed: {exc}", flush=True)

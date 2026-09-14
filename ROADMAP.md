@@ -206,7 +206,7 @@ it as a standing checklist, not a fixed one.
 - [x] Phase 3 — fictional "Cloudnest" corpus ingested into pgvector; retrieval + grounded-answer loop verified, including correct refusal on an out-of-corpus question
 - [x] Phase 4 — LangGraph state machine built (classify → retrieve → generate, conditional retry loop with broadened search); verified both a one-pass resolution and a correctly-bounded retry-then-honest-give-up
 - [x] Phase 5 — FastAPI producer + RabbitMQ + worker wired end-to-end; verified async resolution and idempotent duplicate-message handling
-- [ ] Phase 6
+- [x] Phase 6 — Resolver + Responder agents built and wired into the graph; verified auto-resolve, human-approval escalation, and missing-order handling end-to-end via real HTTP + worker
 - [ ] Phase 7
 - [ ] Phase 8
 - [ ] Phase 9 (optional, permission-gated)
