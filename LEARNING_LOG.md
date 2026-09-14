@@ -218,4 +218,59 @@ phase plan and current checklist status.
 
 ## Phase 5 — Event-driven wiring
 
+**What was done:**
+- Wrote [app/storage.py](app/storage.py): MongoDB persistence for tickets
+  (`save_new_ticket`, `get_ticket`, `update_ticket`), tracking a
+  `status` field (`pending` → `processing` → `resolved`/`failed`).
+- Wrote [app/queue.py](app/queue.py): a RabbitMQ publisher (`publish_ticket`)
+  using a durable queue and persistent message delivery, so both the queue
+  and its messages survive a RabbitMQ restart.
+- Wrote [app/worker.py](app/worker.py): a standalone consumer process that
+  pulls a ticket_id off the queue, fetches the full ticket from MongoDB,
+  runs `resolve_ticket()` (the Phase 4 LangGraph flow), and writes the
+  result back — with an idempotency check that skips any ticket already
+  `processing` or `resolved`.
+- Added `POST /tickets` (returns `202` immediately, doesn't wait for
+  resolution) and `GET /tickets/{id}` (poll for status/result) to
+  [app/main.py](app/main.py). Renamed the FastAPI app title from the old
+  "SecDevAgent" to "SupportOps Agent" — a leftover from before the pivot.
+- Verified end-to-end: posted a real ticket via HTTP, polled until
+  `resolved`, got back the full classification/retrieval/answer trail.
+  Then deliberately republished the same already-resolved ticket_id
+  directly onto the queue and confirmed the worker acked it without
+  reprocessing (`updated_at` timestamp unchanged).
+- Fixed a minor but real issue along the way: Python's stdout is
+  block-buffered when not attached to a terminal, so the worker's log
+  lines weren't appearing in its log file in real time — added
+  `flush=True` to its prints.
+
+**Why:**
+- Decouples "receive a ticket" from "resolve a ticket" — the API returns
+  instantly instead of making a caller wait several seconds for an LLM
+  pipeline (with possible retries) to finish.
+- RabbitMQ's default delivery guarantee is *at-least-once*, not
+  *exactly-once* — a message can be redelivered (e.g. if a worker crashes
+  after processing but before acking). The idempotency check in
+  `process_message` is what makes that safe: reprocessing a duplicate is a
+  no-op instead of silently re-running (and potentially re-billing/
+  re-answering) an already-resolved ticket.
+- MongoDB is the single source of truth for ticket state; the queue message
+  is deliberately just an ID, not a payload copy — avoids the two ever
+  disagreeing about ticket content.
+
+**Concepts covered:**
+- Producer/consumer decoupling via a message queue — why it exists, what
+  problem it solves that a direct function call can't.
+- At-least-once delivery semantics and why idempotency is the
+  application's responsibility, not the queue's.
+- Durable queues + persistent messages (`durable=True`,
+  `delivery_mode=2`) — the difference between a queue existing and a
+  message actually surviving a broker restart.
+- stdout buffering in non-interactive processes — a small but common gotcha
+  when a long-running worker's logs seem to "go missing."
+
+---
+
+## Phase 6 — Multi-agent expansion (Resolver + Responder)
+
 *Not started yet.*

@@ -1,15 +1,20 @@
 import os
+import uuid
 
 import pika
 import psycopg2
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 
+from app.queue import publish_ticket
+from app.storage import get_ticket, save_new_ticket
+
 load_dotenv()
 
-app = FastAPI(title="SecDevAgent")
+app = FastAPI(title="SupportOps Agent")
 
 
 def check_postgres() -> bool:
@@ -72,3 +77,26 @@ def health():
             checks[name] = f"error: {exc}"
     status = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
     return {"status": status, "checks": checks}
+
+
+class TicketCreate(BaseModel):
+    ticket_text: str
+
+
+@app.post("/tickets", status_code=202)
+def create_ticket(payload: TicketCreate):
+    """Accepts a ticket and returns immediately — resolution happens
+    asynchronously via the worker consuming from RabbitMQ. Poll
+    GET /tickets/{ticket_id} for the result."""
+    ticket_id = str(uuid.uuid4())
+    save_new_ticket(ticket_id, payload.ticket_text)
+    publish_ticket(ticket_id)
+    return {"ticket_id": ticket_id, "status": "pending"}
+
+
+@app.get("/tickets/{ticket_id}")
+def read_ticket(ticket_id: str):
+    ticket = get_ticket(ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="ticket not found")
+    return ticket
