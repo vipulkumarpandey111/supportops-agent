@@ -207,7 +207,7 @@ it as a standing checklist, not a fixed one.
 - [x] Phase 4 — LangGraph state machine built (classify → retrieve → generate, conditional retry loop with broadened search); verified both a one-pass resolution and a correctly-bounded retry-then-honest-give-up
 - [x] Phase 5 — FastAPI producer + RabbitMQ + worker wired end-to-end; verified async resolution and idempotent duplicate-message handling
 - [x] Phase 6 — Resolver + Responder agents built and wired into the graph; verified auto-resolve, human-approval escalation, and missing-order handling end-to-end via real HTTP + worker
-- [ ] Phase 7
+- [x] Phase 7 — custom LLM-as-judge + 8-case eval suite built; caught a real judge-reliability issue (small local model judge got 2/8 cases backwards vs. manual review)
 - [ ] Phase 8
 - [ ] Phase 9 (optional, permission-gated)
 - [ ] Phase 10

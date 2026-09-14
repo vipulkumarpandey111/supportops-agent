@@ -329,4 +329,52 @@ phase plan and current checklist status.
 
 ## Phase 7 — Evaluation
 
+**What was done:**
+- Wrote [EVALUATION.md](EVALUATION.md) — why deterministic unit tests don't
+  work on non-deterministic output, the retrieval-vs-generation split,
+  what faithfulness/correctness mean, and real LLM-as-judge risks.
+- Deliberately deviated from the roadmap's literal wording (Ragas/DeepEval)
+  and built a small custom judge instead, using the same `llm_client` +
+  Pydantic pattern as every other agent — both frameworks default to a
+  hosted judge model, which conflicts with staying fully local.
+- Wrote [app/evaluation/test_cases.py](app/evaluation/test_cases.py): 8
+  hand-labeled tickets covering every path built so far (auto-refund,
+  escalated refund, missing order, each ticket category, an out-of-corpus
+  question, and a category with zero matching docs at all).
+- Wrote [app/evaluation/judge.py](app/evaluation/judge.py): a structured
+  `JudgeVerdict` (faithful, correct, reasoning) via one `generate()` call.
+- Wrote [app/evaluation/evaluate.py](app/evaluation/evaluate.py): a runner
+  that scores retrieval deterministically (no LLM) and generation via the
+  judge, then prints a pass/fail report.
+- **Ran it and found a real problem — in the judge, not the pipeline.**
+  8/8 on retrieval and faithfulness, but 6/8 on correctness. Manually
+  reading the 2 "failed" cases showed both replies were actually correct;
+  the judge's own stated reasoning contradicted the text it was grading
+  (see EVALUATION.md section 4.5 for the exact case). Did not silently
+  "fix" this by tweaking the prompt until the numbers looked clean —
+  reported it as what it is: `qwen2.5:7b` isn't reliable enough as a judge
+  for negation-based correctness criteria, a known limitation flagged for
+  Phase 11 (use a stronger/different judge model).
+
+**Why:**
+- With 6 phases of moving parts, manual spot-checking stops scaling —
+  needed a repeatable way to know if a change helps or hurts.
+- Retrieval and generation are scored separately because a system can fail
+  at either independently; a single end-to-end pass/fail number can't tell
+  you which stage actually broke.
+- Building a custom judge instead of adopting Ragas/DeepEval blind means
+  actually understanding what "LLM-as-judge" does mechanically, rather than
+  trusting a framework as a black box.
+
+**Concepts covered:**
+- See [EVALUATION.md](EVALUATION.md) in full.
+- The concrete, load-bearing lesson from this phase: **an automated eval
+  suite is only as trustworthy as its judge.** The first real run proved
+  this directly rather than as a theoretical warning — a human still has
+  to read a sample of judged results before trusting the pass/fail numbers.
+
+---
+
+## Phase 8 — Observability
+
 *Not started yet.*
